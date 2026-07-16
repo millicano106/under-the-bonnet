@@ -5,7 +5,7 @@ on-device in SQLite — no server, no sync, no external APIs yet.
 
 ## Stack
 
-- **Expo SDK 57** (TypeScript template)
+- **Expo SDK 54** (TypeScript template) — pinned for Expo Go compatibility
 - **expo-router** for navigation — file-based routing, so the folder
   structure in `app/` doubles as the route map, and it comes with typed
   routes and deep linking out of the box. Chosen over hand-wired React
