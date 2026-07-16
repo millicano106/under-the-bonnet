@@ -1,0 +1,10 @@
+{
+  "name": "car-app-dev",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "mounts": [
+  "source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,type=bind,readonly",
+  "source=${localEnv:HOME}/.gitconfig,target=/home/node/.gitconfig,type=bind,readonly",
+  "source=claude-code-config,target=/home/node/.config,type=volume"
+  ],
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code@2.1.211"
+}
