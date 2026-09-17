@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, StyleSheet, View } from 'react-native';
 import { Link, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 
+import { Button, EmptyState, ListRow } from '../components';
 import { listCars } from '../db/repository/cars';
 import type { Car } from '../db/types';
+import { colors, spacing } from '../theme';
 
 export default function GarageScreen() {
   const db = useSQLiteContext();
@@ -21,31 +23,30 @@ export default function GarageScreen() {
       <FlatList
         data={cars}
         keyExtractor={(car) => String(car.id)}
-        contentContainerStyle={cars.length === 0 && styles.emptyContainer}
+        contentContainerStyle={cars.length === 0 ? styles.emptyContainer : styles.list}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
-          <View>
-            <Text style={styles.emptyTitle}>No cars yet</Text>
-            <Text style={styles.emptySubtitle}>Add your first car to start tracking it.</Text>
-          </View>
+          <EmptyState
+            icon="truck"
+            title="No cars yet"
+            subtitle="Add your first car to start tracking it."
+          />
         }
         renderItem={({ item }) => (
           <Link href={{ pathname: '/car/[id]', params: { id: String(item.id) } }} asChild>
-            <Pressable style={styles.row}>
-              <Text style={styles.rowTitle}>
-                {item.name} {item.is_sold ? '(sold)' : ''}
-              </Text>
-              <Text style={styles.rowSubtitle}>
-                {item.year} {item.make} {item.model} · {item.registration}
-              </Text>
-            </Pressable>
+            <ListRow
+              leadingIcon="truck"
+              title={`${item.name}${item.is_sold ? ' (sold)' : ''}`}
+              subtitle={`${item.year} ${item.make} ${item.model} · ${item.registration}`}
+            />
           </Link>
         )}
       />
-      <Link href="/add-car" asChild>
-        <Pressable style={styles.addButton}>
-          <Text style={styles.addButtonText}>+ Add Car</Text>
-        </Pressable>
-      </Link>
+      <View style={styles.footer}>
+        <Link href="/add-car" asChild>
+          <Button title="Add Car" icon="plus" onPress={() => {}} />
+        </Link>
+      </View>
     </View>
   );
 }
@@ -53,41 +54,21 @@ export default function GarageScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  list: {
+    padding: spacing.lg,
+  },
+  separator: {
+    height: spacing.sm,
   },
   emptyContainer: {
     flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  emptySubtitle: {
-    marginTop: 4,
-    color: '#666',
-    textAlign: 'center',
-  },
-  row: {
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#ccc',
-  },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  rowSubtitle: {
-    marginTop: 2,
-    color: '#666',
-  },
-  addButton: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  footer: {
+    padding: spacing.lg,
+    paddingTop: 0,
   },
 });

@@ -66,5 +66,6 @@ export interface Reminder {
   source_id: number | null;
   due_date: string;
   is_dismissed: 0 | 1;
+  notification_id: string | null;
   created_at: string;
 }
