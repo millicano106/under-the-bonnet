@@ -69,3 +69,11 @@ export interface Reminder {
   notification_id: string | null;
   created_at: string;
 }
+
+export interface InvoicePhoto {
+  id: number;
+  car_id: number;
+  log_entry_id: number;
+  uri: string;
+  created_at: string;
+}

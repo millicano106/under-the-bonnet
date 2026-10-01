@@ -24,7 +24,14 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Under the Bonnet to attach invoice photos from your library.",
+          "cameraPermission": "Allow Under the Bonnet to photograph invoices."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

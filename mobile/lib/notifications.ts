@@ -9,6 +9,7 @@ import {
   setReminderNotificationId,
   upsertReminderForSource,
 } from '../db/repository/reminders';
+import { DEFAULT_SETTINGS, loadSettings } from '../db/repository/settings';
 import type { ServiceScheduleItem } from '../db/types';
 
 type NotificationsModule = typeof import('expo-notifications');
@@ -41,8 +42,6 @@ function getNotificationsAsync(): Promise<NotificationsModule | null> {
   return notificationsPromise;
 }
 
-const REMINDER_HOUR = 9;
-
 export async function ensureNotificationPermissionsAsync(): Promise<boolean> {
   try {
     if (!Device.isDevice) return false;
@@ -70,9 +69,10 @@ export async function scheduleReminderNotificationAsync(content: {
   title: string;
   body: string;
   dueDateIso: string;
+  hour?: number;
 }): Promise<string | null> {
   try {
-    const fireDate = new Date(`${content.dueDateIso}T${String(REMINDER_HOUR).padStart(2, '0')}:00:00`);
+    const fireDate = new Date(`${content.dueDateIso}T${String(content.hour ?? DEFAULT_SETTINGS.reminderHour).padStart(2, '0')}:00:00`);
     if (Number.isNaN(fireDate.getTime()) || fireDate.getTime() <= Date.now()) return null;
 
     const Notifications = await getNotificationsAsync();
@@ -119,11 +119,15 @@ export async function syncReminderNotificationAsync(
     due_date: scheduleItem.next_due_date,
   });
 
-  const notificationId = await scheduleReminderNotificationAsync({
-    title: `${scheduleItem.name} is due`,
-    body: `Due ${scheduleItem.next_due_date}`,
-    dueDateIso: scheduleItem.next_due_date,
-  });
+  const settings = await loadSettings(db);
+  const notificationId = settings.remindersEnabled
+    ? await scheduleReminderNotificationAsync({
+        title: `${scheduleItem.name} is due`,
+        body: `Due ${scheduleItem.next_due_date}`,
+        dueDateIso: scheduleItem.next_due_date,
+        hour: settings.reminderHour,
+      })
+    : null;
 
   await setReminderNotificationId(db, reminder.id, notificationId);
 }
@@ -134,4 +138,26 @@ export async function cancelReminderNotificationForScheduleItemAsync(
 ): Promise<void> {
   const existing = await getReminderBySource(db, 'service_schedule', scheduleItemId);
   await cancelReminderNotificationAsync(existing?.notification_id);
+}
+
+// Re-syncs every schedule item's notification, e.g. after the reminder hour or
+// the reminders on/off setting changes.
+export async function resyncAllReminderNotificationsAsync(db: SQLiteDatabase): Promise<void> {
+  const items = await db.getAllAsync<ServiceScheduleItem>('SELECT * FROM service_schedule_items');
+  for (const item of items) {
+    await syncReminderNotificationAsync(db, item);
+  }
+}
+
+export async function cancelReminderNotificationsForCarAsync(
+  db: SQLiteDatabase,
+  carId: number
+): Promise<void> {
+  const rows = await db.getAllAsync<{ notification_id: string | null }>(
+    'SELECT notification_id FROM reminders WHERE car_id = ?',
+    carId
+  );
+  for (const row of rows) {
+    await cancelReminderNotificationAsync(row.notification_id);
+  }
 }

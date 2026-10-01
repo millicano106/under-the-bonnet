@@ -65,3 +65,18 @@ export async function markCarSold(
     id
   );
 }
+
+export async function reopenCar(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync(
+    `UPDATE cars SET is_sold = 0, sale_price = NULL, sale_date = NULL, updated_at = ? WHERE id = ?`,
+    new Date().toISOString(),
+    id
+  );
+}
+
+// Child rows (components, schedule items, log entries, reminders, invoice
+// photos) are removed by ON DELETE CASCADE. Callers are responsible for
+// cancelling OS notifications and deleting photo files first.
+export async function deleteCar(db: SQLiteDatabase, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM cars WHERE id = ?', id);
+}

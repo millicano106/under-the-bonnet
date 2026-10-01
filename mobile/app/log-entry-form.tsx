@@ -1,11 +1,18 @@
-import { useEffect, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
+import { Feather } from '@expo/vector-icons';
 
 import { Button, Card, TextField } from '../components';
 import { createLogEntry, getLogEntryById, updateLogEntry } from '../db/repository/logEntries';
-import type { LogEntryType } from '../db/types';
+import {
+  addInvoicePhoto,
+  deleteInvoicePhoto,
+  listInvoicePhotosByLogEntry,
+} from '../db/repository/invoicePhotos';
+import type { InvoicePhoto, LogEntryType } from '../db/types';
+import { deleteInvoicePhotoFile, pickInvoicePhotoAsync } from '../lib/invoicePhotos';
 import { parseOptionalNumber, parseOptionalText, todayIsoDate } from '../lib/formValues';
 import { colors, radii, spacing, typography } from '../theme';
 
@@ -29,9 +36,25 @@ export default function LogEntryFormScreen() {
   const [date, setDate] = useState(todayIsoDate());
   const [loaded, setLoaded] = useState(!isEditing);
   const [submitting, setSubmitting] = useState(false);
+  const [savedPhotos, setSavedPhotos] = useState<InvoicePhoto[]>([]);
+  const [removedPhotoIds, setRemovedPhotoIds] = useState<number[]>([]);
+  const [newPhotoUris, setNewPhotoUris] = useState<string[]>([]);
+
+  // Newly picked photos are copied into app storage straight away; if the form
+  // is left without saving, those orphaned files are deleted on unmount.
+  const newPhotoUrisRef = useRef<string[]>([]);
+  const savedRef = useRef(false);
+  newPhotoUrisRef.current = newPhotoUris;
+  useEffect(
+    () => () => {
+      if (!savedRef.current) newPhotoUrisRef.current.forEach(deleteInvoicePhotoFile);
+    },
+    []
+  );
 
   useEffect(() => {
     if (!id) return;
+    listInvoicePhotosByLogEntry(db, Number(id)).then(setSavedPhotos);
     getLogEntryById(db, Number(id)).then((entry) => {
       if (!entry) return;
       setEntryType(entry.entry_type);
@@ -46,6 +69,22 @@ export default function LogEntryFormScreen() {
 
   const canSubmit = title.trim().length > 0 && date.trim().length > 0;
 
+  async function handleAddPhoto(source: 'camera' | 'library') {
+    try {
+      const uri = await pickInvoicePhotoAsync(source);
+      if (uri) setNewPhotoUris((current) => [...current, uri]);
+    } catch (error) {
+      Alert.alert('Could not add photo', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  function removeNewPhoto(uri: string) {
+    deleteInvoicePhotoFile(uri);
+    setNewPhotoUris((current) => current.filter((u) => u !== uri));
+  }
+
+  const visibleSavedPhotos = savedPhotos.filter((photo) => !removedPhotoIds.includes(photo.id));
+
   async function handleSubmit() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
@@ -58,11 +97,21 @@ export default function LogEntryFormScreen() {
         mileage_at_entry: parseOptionalNumber(mileageAtEntry),
         date: date.trim(),
       };
+      let logEntryId: number;
       if (isEditing) {
-        await updateLogEntry(db, Number(id), input);
+        logEntryId = Number(id);
+        await updateLogEntry(db, logEntryId, input);
       } else {
-        await createLogEntry(db, { car_id: Number(carId), ...input });
+        logEntryId = (await createLogEntry(db, { car_id: Number(carId), ...input })).id;
       }
+      for (const uri of newPhotoUris) {
+        await addInvoicePhoto(db, { car_id: Number(carId), log_entry_id: logEntryId, uri });
+      }
+      for (const photo of savedPhotos.filter((p) => removedPhotoIds.includes(p.id))) {
+        await deleteInvoicePhoto(db, photo.id);
+        deleteInvoicePhotoFile(photo.uri);
+      }
+      savedRef.current = true;
       router.back();
     } catch (error) {
       Alert.alert('Could not save log entry', error instanceof Error ? error.message : String(error));
@@ -123,6 +172,54 @@ export default function LogEntryFormScreen() {
         <TextField label="Date" value={date} onChangeText={setDate} placeholder="YYYY-MM-DD" />
       </Card>
 
+      <Card style={styles.photoCard}>
+        <Text style={styles.label}>Invoice photos</Text>
+        <View style={styles.photoGrid}>
+          {visibleSavedPhotos.map((photo) => (
+            <View key={`saved-${photo.id}`} style={styles.photoWrap}>
+              <Image source={{ uri: photo.uri }} style={styles.photo} />
+              <Pressable
+                style={styles.photoRemove}
+                onPress={() => setRemovedPhotoIds((current) => [...current, photo.id])}
+                hitSlop={6}
+                accessibilityLabel="Remove photo"
+              >
+                <Feather name="x" size={14} color={colors.white} />
+              </Pressable>
+            </View>
+          ))}
+          {newPhotoUris.map((uri) => (
+            <View key={uri} style={styles.photoWrap}>
+              <Image source={{ uri }} style={styles.photo} />
+              <Pressable
+                style={styles.photoRemove}
+                onPress={() => removeNewPhoto(uri)}
+                hitSlop={6}
+                accessibilityLabel="Remove photo"
+              >
+                <Feather name="x" size={14} color={colors.white} />
+              </Pressable>
+            </View>
+          ))}
+        </View>
+        <View style={styles.photoActions}>
+          <Button
+            title="Take photo"
+            icon="camera"
+            variant="secondary"
+            onPress={() => handleAddPhoto('camera')}
+            style={styles.photoButton}
+          />
+          <Button
+            title="Choose photo"
+            icon="image"
+            variant="secondary"
+            onPress={() => handleAddPhoto('library')}
+            style={styles.photoButton}
+          />
+        </View>
+      </Card>
+
       <Button
         title={submitting ? 'Saving…' : 'Save Log Entry'}
         onPress={handleSubmit}
@@ -164,6 +261,43 @@ const styles = StyleSheet.create({
   },
   chipTextActive: {
     color: colors.primary,
+  },
+  photoCard: {
+    marginTop: spacing.lg,
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  photoWrap: {
+    width: 92,
+    height: 92,
+  },
+  photo: {
+    width: 92,
+    height: 92,
+    borderRadius: radii.md,
+    backgroundColor: colors.neutralSoft,
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  photoButton: {
+    flex: 1,
   },
   submitButton: {
     marginTop: spacing.lg,

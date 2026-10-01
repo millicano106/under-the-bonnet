@@ -13,6 +13,10 @@ on-device in SQLite — no server, no sync, no external APIs yet.
 - **expo-sqlite** for local storage
 - **expo-notifications** + **expo-device** for local reminder notifications
   (scheduled on-device only — no push/remote notifications, no backend)
+- **expo-image-picker** + **expo-file-system** for invoice photos (copied into
+  the app's document directory)
+- **expo-print** + **expo-sharing** for PDF car reports
+- **react-native-svg** for the decorative screen background
 - **@expo/vector-icons** (Feather set) for icons throughout the UI
 
 ## Running
@@ -112,7 +116,7 @@ without ever wiping a user's local data.
    applied it won't re-run it, so a later edit only affects fresh installs
    and creates drift. Add a new migration instead, even for a one-line fix.
 
-### Schema (v2)
+### Schema (v4)
 
 - `cars` — one row per car, including purchase/sale price & date and a
   `is_sold` flag.
@@ -124,6 +128,10 @@ without ever wiping a user's local data.
   optionally holding the `notification_id` of a locally-scheduled OS
   notification (added in migration 002) so it can be cancelled/rescheduled
   later.
+
+- `invoice_photos` — photos attached to a log entry (migration 003); the file
+  lives in `<documentDirectory>/invoices/` and is deleted with its row.
+- `settings` — key/value app preferences (migration 004).
 
 All child tables have an indexed `car_id` foreign key with `ON DELETE
 CASCADE`, so deleting a car cleans up its related rows. Note that cascading
@@ -152,9 +160,11 @@ date data anywhere in the app for those yet, so they remain unreachable
 
 ## Screens
 
-- `/` — Garage: list of cars, empty state, add button.
+- `/` — Garage: Active / Sold tabs, delete per car, add button, settings gear.
+- `/settings` — currency, name for reports, reminder on/off + time of day,
+  background artwork toggle (stored in the `settings` table).
 - `/add-car` — modal form to add a car.
-- `/car/[id]` — Car detail: header info, Mark as Sold action, and
+- `/car/[id]` — Car detail: header info, Share PDF Report, Mark as Sold / Reopen, delete car, and
   Financials / Components / Schedule / Log sections (in-screen tabs), each
   of Components/Schedule/Log supporting add/edit/delete.
 - `/component-form`, `/schedule-item-form`, `/log-entry-form` — shared
