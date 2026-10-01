@@ -1,6 +1,6 @@
 import { StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
-import { colors, radii, spacing, typography } from '../theme';
+import { colors, fonts, radii, spacing, TOUCH_TARGET, typography } from '../theme';
 
 export function TextField(props: {
   label: string;
@@ -19,7 +19,7 @@ export function TextField(props: {
         value={props.value}
         onChangeText={props.onChangeText}
         placeholder={props.placeholder}
-        placeholderTextColor={colors.textMuted}
+        placeholderTextColor={colors.iconMuted}
         keyboardType={props.keyboardType ?? 'default'}
         autoCapitalize={props.autoCapitalize ?? 'sentences'}
         multiline={props.multiline}
@@ -37,12 +37,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   input: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.inputBorder,
+    backgroundColor: colors.surface,
+    borderRadius: radii.md,
+    minHeight: TOUCH_TARGET,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
+    fontFamily: fonts.regular,
     fontSize: 16,
     color: colors.textPrimary,
   },

@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
-import { colors, radii, shadow, spacing, typography } from '../theme';
+import { useAccent } from '../lib/accent';
+import { colors, radii, spacing, TOUCH_TARGET, typography } from '../theme';
 
 export function ListRow(props: {
   title: string;
@@ -11,11 +12,12 @@ export function ListRow(props: {
   right?: ReactNode;
   onPress?: () => void;
 }) {
+  const accent = useAccent();
   return (
-    <Pressable style={styles.row} onPress={props.onPress}>
+    <Pressable style={styles.row} onPress={props.onPress} accessibilityRole={props.onPress ? 'button' : undefined}>
       {props.leadingIcon ? (
-        <View style={styles.iconCircle}>
-          <Feather name={props.leadingIcon} size={16} color={colors.primary} />
+        <View style={[styles.iconTile, { backgroundColor: accent.soft }]}>
+          <Feather name={props.leadingIcon} size={17} color={accent.text} />
         </View>
       ) : null}
       <View style={styles.textBlock}>
@@ -29,9 +31,7 @@ export function ListRow(props: {
         ) : null}
       </View>
       {props.right ? <View style={styles.right}>{props.right}</View> : null}
-      {props.onPress ? (
-        <Feather name="chevron-right" size={18} color={colors.textMuted} />
-      ) : null}
+      {props.onPress ? <Feather name="chevron-right" size={18} color={colors.iconMuted} /> : null}
     </Pressable>
   );
 }
@@ -40,16 +40,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    minHeight: TOUCH_TARGET + 12,
     backgroundColor: colors.surface,
     borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
     padding: spacing.md,
-    ...shadow.card,
   },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.pill,
-    backgroundColor: colors.primarySoft,
+  iconTile: {
+    width: 36,
+    height: 36,
+    borderRadius: radii.md,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: spacing.md,
@@ -58,8 +59,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    ...typography.body,
-    fontWeight: '600',
+    ...typography.rowTitle,
   },
   subtitle: {
     ...typography.caption,

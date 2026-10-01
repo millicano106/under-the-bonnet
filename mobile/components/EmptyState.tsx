@@ -10,7 +10,7 @@ export function EmptyState(props: {
 }) {
   return (
     <View style={styles.container}>
-      <Feather name={props.icon ?? 'inbox'} size={28} color={colors.textMuted} />
+      <Feather name={props.icon ?? 'inbox'} size={28} color={colors.iconMuted} />
       <Text style={styles.title}>{props.title}</Text>
       {props.subtitle ? <Text style={styles.subtitle}>{props.subtitle}</Text> : null}
     </View>
