@@ -16,10 +16,34 @@ import { StatusBar } from 'expo-status-bar';
 import { DATABASE_NAME } from '../db/client';
 import { migrateDbIfNeeded } from '../db/migrate';
 import { ensureNotificationPermissionsAsync } from '../lib/notifications';
+import { useAccent } from '../lib/accent';
 import { SettingsProvider } from '../lib/settings';
 import { colors, fonts } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
+
+function AppStack() {
+  const accent = useAccent();
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: colors.background },
+        headerTintColor: accent.text,
+        headerTitleStyle: { color: colors.textPrimary, fontFamily: fonts.semibold },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: colors.background },
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="add-car" options={{ title: 'Add Car', presentation: 'modal' }} />
+      <Stack.Screen name="car/[id]" options={{ title: 'Car Detail' }} />
+      <Stack.Screen name="settings" options={{ title: 'Settings' }} />
+      <Stack.Screen name="component-form" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="schedule-item-form" options={{ presentation: 'modal' }} />
+      <Stack.Screen name="log-entry-form" options={{ presentation: 'modal' }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -45,22 +69,7 @@ export default function RootLayout() {
     <SQLiteProvider databaseName={DATABASE_NAME} onInit={migrateDbIfNeeded}>
       <SettingsProvider>
         <StatusBar style="dark" />
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: colors.background },
-            headerTintColor: colors.primary,
-            headerTitleStyle: { color: colors.textPrimary, fontFamily: fonts.semibold },
-            headerShadowVisible: false,
-          }}
-        >
-          <Stack.Screen name="index" options={{ title: 'Garage' }} />
-          <Stack.Screen name="add-car" options={{ title: 'Add Car', presentation: 'modal' }} />
-          <Stack.Screen name="car/[id]" options={{ title: 'Car Detail' }} />
-          <Stack.Screen name="settings" options={{ title: 'Settings' }} />
-          <Stack.Screen name="component-form" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="schedule-item-form" options={{ presentation: 'modal' }} />
-          <Stack.Screen name="log-entry-form" options={{ presentation: 'modal' }} />
-        </Stack>
+        <AppStack />
       </SettingsProvider>
     </SQLiteProvider>
   );

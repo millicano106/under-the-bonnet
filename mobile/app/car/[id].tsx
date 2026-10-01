@@ -17,7 +17,8 @@ import { shareCarReportAsync } from '../../lib/carReport';
 import { deleteInvoicePhotoFile } from '../../lib/invoicePhotos';
 import { cancelReminderNotificationForScheduleItemAsync } from '../../lib/notifications';
 import { useSettings } from '../../lib/settings';
-import { colors, radii, shadow, spacing, typography } from '../../theme';
+import { useAccent } from '../../lib/accent';
+import { colors, fonts, radii, spacing, TOUCH_TARGET, typography } from '../../theme';
 
 type Section = 'financials' | 'components' | 'schedule' | 'log';
 
@@ -28,10 +29,20 @@ const SECTIONS: { key: Section; label: string; icon: keyof typeof Feather.glyphM
   { key: 'log', label: 'Log', icon: 'file-text' },
 ];
 
+function FinancialRow({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.financialRow}>
+      <Text style={styles.financialLabel}>{label}</Text>
+      <Text style={styles.financialValue}>{value}</Text>
+    </View>
+  );
+}
+
 export default function CarDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const carId = Number(id);
   const db = useSQLiteContext();
+  const accent = useAccent();
   const { settings } = useSettings();
   const currency = settings.currencySymbol;
 
@@ -142,10 +153,11 @@ export default function CarDetailScreen() {
           headerRight: () => (
             <Pressable
               onPress={() => confirmDeleteCar(db, car, () => router.replace('/'))}
-              hitSlop={8}
+              style={styles.headerDelete}
+              accessibilityRole="button"
               accessibilityLabel="Delete car"
             >
-              <Feather name="trash-2" size={20} color={colors.danger} />
+              <Feather name="trash-2" size={20} color={accent.danger} />
             </Pressable>
           ),
         }}
@@ -153,9 +165,14 @@ export default function CarDetailScreen() {
 
       <Card style={styles.headerCard}>
         <Text style={styles.title}>{car.name}</Text>
-        <Text style={styles.subtitle}>
-          {car.year} {car.make} {car.model} · {car.registration}
-        </Text>
+        <View style={styles.plateRow}>
+          <View style={styles.plate}>
+            <Text style={styles.plateText}>{car.registration}</Text>
+          </View>
+          <Text style={styles.subtitleInline}>
+            {car.year} {car.make} {car.model}
+          </Text>
+        </View>
         {car.colour ? <Text style={styles.subtitle}>Colour: {car.colour}</Text> : null}
         {car.is_sold ? (
           <View style={styles.soldBadgeWrap}>
@@ -219,33 +236,35 @@ export default function CarDetailScreen() {
         </Card>
       )}
 
-      <View style={styles.tabBar}>
-        {SECTIONS.map((s) => (
-          <Pressable
-            key={s.key}
-            style={[styles.tab, section === s.key && styles.tabActive]}
-            onPress={() => setSection(s.key)}
-          >
-            <Feather
-              name={s.icon}
-              size={14}
-              color={section === s.key ? colors.primary : colors.textSecondary}
-              style={styles.tabIcon}
-            />
-            <Text style={[styles.tabText, section === s.key && styles.tabTextActive]}>{s.label}</Text>
-          </Pressable>
-        ))}
+      <View style={styles.tabBar} accessibilityRole="tablist">
+        {SECTIONS.map((s) => {
+          const selected = section === s.key;
+          return (
+            <Pressable
+              key={s.key}
+              style={[styles.tab, selected && styles.tabActive]}
+              onPress={() => setSection(s.key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+            >
+              <Feather name={s.icon} size={16} color={selected ? accent.text : colors.textTab} />
+              <Text style={[styles.tabText, selected && { color: accent.text }]} numberOfLines={1}>
+                {s.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <View style={styles.sectionContent}>
         {section === 'financials' && (
           <Card>
-            <Text style={styles.row}>Purchase price: {currency}{car.purchase_price}</Text>
-            <Text style={styles.row}>Purchase date: {car.purchase_date}</Text>
+            <FinancialRow label="Purchase price" value={`${currency}${car.purchase_price}`} />
+            <FinancialRow label="Purchase date" value={car.purchase_date} />
             {car.is_sold ? (
               <>
-                <Text style={styles.row}>Sale price: {currency}{car.sale_price}</Text>
-                <Text style={styles.row}>Sale date: {car.sale_date}</Text>
+                <FinancialRow label="Sale price" value={`${currency}${car.sale_price}`} />
+                <FinancialRow label="Sale date" value={car.sale_date ?? ''} />
               </>
             ) : null}
           </Card>
@@ -279,10 +298,11 @@ export default function CarDetailScreen() {
                     right={
                       <Pressable
                         onPress={() => handleDeleteComponent(component)}
-                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Delete"
                         style={styles.deleteButton}
                       >
-                        <Feather name="trash-2" size={16} color={colors.danger} />
+                        <Feather name="trash-2" size={17} color={accent.danger} />
                       </Pressable>
                     }
                   />
@@ -316,6 +336,7 @@ export default function CarDetailScreen() {
                       leadingIcon="calendar"
                       title={item.name}
                       subtitle={item.next_due_date ? `Due ${item.next_due_date}` : 'No due date set'}
+                      monoSubtitle
                       onPress={() =>
                         router.push({
                           pathname: '/schedule-item-form',
@@ -329,10 +350,11 @@ export default function CarDetailScreen() {
                           ) : null}
                           <Pressable
                             onPress={() => handleDeleteScheduleItem(item)}
-                            hitSlop={8}
+                            accessibilityRole="button"
+                            accessibilityLabel="Delete"
                             style={styles.deleteButton}
                           >
-                            <Feather name="trash-2" size={16} color={colors.danger} />
+                            <Feather name="trash-2" size={17} color={accent.danger} />
                           </Pressable>
                         </View>
                       }
@@ -362,6 +384,7 @@ export default function CarDetailScreen() {
                     key={entry.id}
                     leadingIcon="file-text"
                     title={entry.title}
+                    monoSubtitle
                     subtitle={`${entry.entry_type} · ${entry.date}${
                       entry.cost != null ? ` · ${currency}${entry.cost}` : ''
                     }`}
@@ -382,10 +405,11 @@ export default function CarDetailScreen() {
                         ) : null}
                         <Pressable
                           onPress={() => handleDeleteLogEntry(entry)}
-                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Delete"
                           style={styles.deleteButton}
                         >
-                          <Feather name="trash-2" size={16} color={colors.danger} />
+                          <Feather name="trash-2" size={17} color={accent.danger} />
                         </Pressable>
                       </View>
                     }
@@ -415,7 +439,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   title: {
-    ...typography.title,
+    ...typography.carName,
+  },
+  plateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  plate: {
+    borderWidth: 1,
+    borderColor: colors.textPrimary,
+    borderRadius: radii.xs,
+    paddingVertical: 1,
+    paddingHorizontal: 8,
+  },
+  plateText: {
+    fontFamily: fonts.mono,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  subtitleInline: {
+    ...typography.caption,
+    flexShrink: 1,
   },
   subtitle: {
     ...typography.caption,
@@ -435,34 +481,36 @@ const styles = StyleSheet.create({
   soldFormButton: {
     flex: 1,
   },
+  headerDelete: {
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.neutralSoft,
-    borderRadius: radii.pill,
+    backgroundColor: colors.tabTrack,
+    borderRadius: radii.lg,
     padding: 4,
     marginBottom: spacing.lg,
   },
   tab: {
     flex: 1,
-    flexDirection: 'row',
+    minHeight: TOUCH_TARGET + 8,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: radii.pill,
+    gap: 2,
+    borderRadius: radii.md,
   },
   tabActive: {
     backgroundColor: colors.surface,
-    ...shadow.card,
-  },
-  tabIcon: {
-    marginRight: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   tabText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  tabTextActive: {
-    color: colors.primary,
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    color: colors.textTab,
   },
   sectionContent: {
     paddingBottom: spacing.xxl,
@@ -470,12 +518,26 @@ const styles = StyleSheet.create({
   rowList: {
     gap: spacing.sm,
   },
-  row: {
-    ...typography.body,
-    paddingVertical: 4,
+  financialRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: TOUCH_TARGET,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  financialLabel: {
+    ...typography.caption,
+  },
+  financialValue: {
+    ...typography.mono,
+    fontSize: 15,
   },
   deleteButton: {
-    padding: 4,
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scheduleRowRight: {
     flexDirection: 'row',

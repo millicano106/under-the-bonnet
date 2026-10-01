@@ -1,20 +1,22 @@
-import { useCallback, useLayoutEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { Link, useFocusEffect, useNavigation } from 'expo-router';
+import { Link, useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { Feather } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Badge, Button, EmptyState, ListRow, Screen } from '../components';
 import { listCars } from '../db/repository/cars';
 import type { Car } from '../db/types';
+import { useAccent } from '../lib/accent';
 import { confirmDeleteCar } from '../lib/carActions';
-import { colors, radii, shadow, spacing, typography } from '../theme';
+import { colors, fonts, radii, spacing, TOUCH_TARGET, typography } from '../theme';
 
 type Tab = 'active' | 'sold';
 
 export default function GarageScreen() {
   const db = useSQLiteContext();
-  const navigation = useNavigation();
+  const accent = useAccent();
   const [cars, setCars] = useState<Car[]>([]);
   const [tab, setTab] = useState<Tab>('active');
 
@@ -24,95 +26,133 @@ export default function GarageScreen() {
 
   useFocusEffect(reload);
 
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerRight: () => (
-        <Link href="/settings" asChild>
-          <Pressable hitSlop={8} accessibilityLabel="Settings">
-            <Feather name="settings" size={22} color={colors.primary} />
-          </Pressable>
-        </Link>
-      ),
-    });
-  }, [navigation]);
-
   const activeCars = cars.filter((car) => !car.is_sold);
   const soldCars = cars.filter((car) => car.is_sold);
   const visible = tab === 'active' ? activeCars : soldCars;
 
   return (
     <Screen>
-      <View style={styles.tabBar}>
-        {(
-          [
-            { key: 'active', label: 'Active', count: activeCars.length },
-            { key: 'sold', label: 'Sold', count: soldCars.length },
-          ] as const
-        ).map((t) => (
-          <Pressable
-            key={t.key}
-            style={[styles.tab, tab === t.key && styles.tabActive]}
-            onPress={() => setTab(t.key)}
-          >
-            <Text style={[styles.tabText, tab === t.key && styles.tabTextActive]}>
-              {t.label} ({t.count})
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <View style={styles.headerText}>
+            <Text style={[styles.overline, { color: accent.text }]}>Under the bonnet</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Garage
             </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <FlatList
-        data={visible}
-        keyExtractor={(car) => String(car.id)}
-        contentContainerStyle={visible.length === 0 ? styles.emptyContainer : styles.list}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          tab === 'active' ? (
-            <EmptyState
-              icon="truck"
-              title="No active cars"
-              subtitle="Add a car to start tracking it."
-            />
-          ) : (
-            <EmptyState icon="tag" title="No sold cars" subtitle="Cars you mark as sold appear here." />
-          )
-        }
-        renderItem={({ item }) => (
-          <Link href={{ pathname: '/car/[id]', params: { id: String(item.id) } }} asChild>
-            <ListRow
-              leadingIcon={item.is_sold ? 'tag' : 'truck'}
-              title={item.name}
-              subtitle={`${item.year} ${item.make} ${item.model} · ${item.registration}`}
-              right={
-                <View style={styles.rowRight}>
-                  {item.is_sold ? <Badge label="Sold" tone="success" /> : null}
-                  <Pressable
-                    onPress={() => confirmDeleteCar(db, item, reload)}
-                    hitSlop={8}
-                    accessibilityLabel={`Delete ${item.name}`}
-                    style={styles.deleteButton}
-                  >
-                    <Feather name="trash-2" size={16} color={colors.danger} />
-                  </Pressable>
-                </View>
-              }
-            />
+          </View>
+          <Link href="/settings" asChild>
+            <Pressable style={styles.settingsButton} accessibilityRole="button" accessibilityLabel="Settings">
+              <Feather name="settings" size={20} color={accent.text} />
+            </Pressable>
           </Link>
-        )}
-      />
-      <View style={styles.footer}>
-        <Link href="/add-car" asChild>
-          <Button title="Add Car" icon="plus" onPress={() => {}} />
-        </Link>
-      </View>
+        </View>
+
+        <View style={styles.tabBar} accessibilityRole="tablist">
+          {(
+            [
+              { key: 'active', label: 'Active', count: activeCars.length },
+              { key: 'sold', label: 'Sold', count: soldCars.length },
+            ] as const
+          ).map((t) => {
+            const selected = tab === t.key;
+            return (
+              <Pressable
+                key={t.key}
+                style={[styles.tab, selected && { backgroundColor: accent.fill }]}
+                onPress={() => setTab(t.key)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+              >
+                <Text style={[styles.tabText, selected && { color: accent.on }]}>
+                  {t.label} <Text style={styles.tabCount}>{t.count}</Text>
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <FlatList
+          data={visible}
+          keyExtractor={(car) => String(car.id)}
+          style={styles.listWrap}
+          contentContainerStyle={visible.length === 0 ? styles.emptyContainer : styles.list}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ListEmptyComponent={
+            tab === 'active' ? (
+              <EmptyState icon="truck" title="No active cars" subtitle="Add a car to start tracking it." />
+            ) : (
+              <EmptyState icon="tag" title="No sold cars" subtitle="Cars you mark as sold appear here." />
+            )
+          }
+          renderItem={({ item }) => (
+            <Link href={{ pathname: '/car/[id]', params: { id: String(item.id) } }} asChild>
+              <ListRow
+                leadingIcon={item.is_sold ? 'tag' : 'truck'}
+                title={item.name}
+                plate={item.registration}
+                subtitle={`${item.year} ${item.make} ${item.model}`}
+                right={
+                  <View style={styles.rowRight}>
+                    {item.is_sold ? <Badge label="Sold" tone="success" /> : null}
+                    <Pressable
+                      onPress={() => confirmDeleteCar(db, item, reload)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${item.name}`}
+                      style={styles.deleteButton}
+                    >
+                      <Feather name="trash-2" size={17} color={accent.danger} />
+                    </Pressable>
+                  </View>
+                }
+              />
+            </Link>
+          )}
+        />
+        <View style={styles.footer}>
+          <Link href="/add-car" asChild>
+            <Button title="Add Car" icon="plus" onPress={() => {}} />
+          </Link>
+        </View>
+      </SafeAreaView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  headerText: {
+    flex: 1,
+  },
+  overline: {
+    ...typography.label,
+  },
+  title: {
+    ...typography.title,
+    marginTop: 2,
+  },
+  // Solid surface so the icon never sits directly on the flag artwork.
+  settingsButton: {
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+  },
   tabBar: {
     flexDirection: 'row',
-    backgroundColor: colors.neutralSoft,
+    backgroundColor: colors.tabTrack,
     borderRadius: radii.pill,
     padding: 4,
     marginHorizontal: spacing.lg,
@@ -120,20 +160,22 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
+    minHeight: TOUCH_TARGET,
     alignItems: 'center',
-    paddingVertical: 8,
+    justifyContent: 'center',
     borderRadius: radii.pill,
   },
-  tabActive: {
-    backgroundColor: colors.surface,
-    ...shadow.card,
-  },
   tabText: {
-    ...typography.caption,
-    fontWeight: '600',
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.textTab,
   },
-  tabTextActive: {
-    color: colors.primary,
+  tabCount: {
+    fontFamily: fonts.mono,
+    fontSize: 13,
+  },
+  listWrap: {
+    flex: 1,
   },
   list: {
     padding: spacing.lg,
@@ -149,10 +191,13 @@ const styles = StyleSheet.create({
   rowRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   deleteButton: {
-    padding: 4,
+    width: TOUCH_TARGET,
+    height: TOUCH_TARGET,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   footer: {
     padding: spacing.lg,

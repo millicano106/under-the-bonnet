@@ -3,11 +3,15 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 
 import { useAccent } from '../lib/accent';
-import { colors, radii, spacing, TOUCH_TARGET, typography } from '../theme';
+import { colors, fonts, radii, spacing, TOUCH_TARGET, typography } from '../theme';
 
 export function ListRow(props: {
   title: string;
   subtitle?: string;
+  // Renders the subtitle in mono (dates, costs).
+  monoSubtitle?: boolean;
+  // Registration shown as a plate chip beside the subtitle.
+  plate?: string;
   leadingIcon?: keyof typeof Feather.glyphMap;
   right?: ReactNode;
   onPress?: () => void;
@@ -24,10 +28,22 @@ export function ListRow(props: {
         <Text style={styles.title} numberOfLines={1}>
           {props.title}
         </Text>
-        {props.subtitle ? (
-          <Text style={styles.subtitle} numberOfLines={1}>
-            {props.subtitle}
-          </Text>
+        {props.subtitle || props.plate ? (
+          <View style={styles.subtitleRow}>
+            {props.plate ? (
+              <View style={styles.plate}>
+                <Text style={styles.plateText}>{props.plate}</Text>
+              </View>
+            ) : null}
+            {props.subtitle ? (
+              <Text
+                style={[styles.subtitle, props.monoSubtitle && styles.subtitleMono, styles.subtitleFlex]}
+                numberOfLines={1}
+              >
+                {props.subtitle}
+              </Text>
+            ) : null}
+          </View>
         ) : null}
       </View>
       {props.right ? <View style={styles.right}>{props.right}</View> : null}
@@ -61,9 +77,33 @@ const styles = StyleSheet.create({
   title: {
     ...typography.rowTitle,
   },
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    gap: spacing.sm,
+  },
   subtitle: {
     ...typography.caption,
-    marginTop: 2,
+  },
+  subtitleFlex: {
+    flexShrink: 1,
+  },
+  subtitleMono: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+  },
+  plate: {
+    borderWidth: 1,
+    borderColor: colors.textPrimary,
+    borderRadius: radii.xs,
+    paddingVertical: 1,
+    paddingHorizontal: 6,
+  },
+  plateText: {
+    fontFamily: fonts.mono,
+    fontSize: 12,
+    color: colors.textPrimary,
   },
   right: {
     marginLeft: spacing.sm,

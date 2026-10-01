@@ -20,13 +20,6 @@ export const colors = {
   success: '#2F9E52',
   successSoft: '#E3F2E8',
   white: '#FFFFFF',
-
-  // Legacy aliases, removed once every screen reads the accent paint.
-  primary: '#1E5E47',
-  primarySoft: '#E2EAE7',
-  neutral: '#3F3C36',
-  neutralSoft: '#EEECE6',
-  textMuted: '#7A766C',
 };
 
 export const spacing = {

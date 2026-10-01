@@ -14,7 +14,8 @@ import {
 import type { InvoicePhoto, LogEntryType } from '../db/types';
 import { deleteInvoicePhotoFile, pickInvoicePhotoAsync } from '../lib/invoicePhotos';
 import { parseOptionalNumber, parseOptionalText, todayIsoDate } from '../lib/formValues';
-import { colors, radii, spacing, typography } from '../theme';
+import { useAccent } from '../lib/accent';
+import { colors, fonts, radii, spacing, TOUCH_TARGET, typography } from '../theme';
 
 const ENTRY_TYPES: { key: LogEntryType; label: string }[] = [
   { key: 'service', label: 'Service' },
@@ -26,6 +27,7 @@ const ENTRY_TYPES: { key: LogEntryType; label: string }[] = [
 export default function LogEntryFormScreen() {
   const { carId, id } = useLocalSearchParams<{ carId: string; id?: string }>();
   const db = useSQLiteContext();
+  const accent = useAccent();
   const isEditing = Boolean(id);
 
   const [entryType, setEntryType] = useState<LogEntryType>('note');
@@ -137,10 +139,12 @@ export default function LogEntryFormScreen() {
           {ENTRY_TYPES.map((type) => (
             <Pressable
               key={type.key}
-              style={[styles.chip, entryType === type.key && styles.chipActive]}
+              style={[styles.chip, entryType === type.key && { backgroundColor: accent.fill }]}
               onPress={() => setEntryType(type.key)}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: entryType === type.key }}
             >
-              <Text style={[styles.chipText, entryType === type.key && styles.chipTextActive]}>
+              <Text style={[styles.chipText, entryType === type.key && { color: accent.on }]}>
                 {type.label}
               </Text>
             </Pressable>
@@ -181,7 +185,8 @@ export default function LogEntryFormScreen() {
               <Pressable
                 style={styles.photoRemove}
                 onPress={() => setRemovedPhotoIds((current) => [...current, photo.id])}
-                hitSlop={6}
+                hitSlop={TOUCH_TARGET / 2 - 11}
+                accessibilityRole="button"
                 accessibilityLabel="Remove photo"
               >
                 <Feather name="x" size={14} color={colors.white} />
@@ -194,7 +199,8 @@ export default function LogEntryFormScreen() {
               <Pressable
                 style={styles.photoRemove}
                 onPress={() => removeNewPhoto(uri)}
-                hitSlop={6}
+                hitSlop={TOUCH_TARGET / 2 - 11}
+                accessibilityRole="button"
                 accessibilityLabel="Remove photo"
               >
                 <Feather name="x" size={14} color={colors.white} />
@@ -242,25 +248,21 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    gap: spacing.sm,
     marginBottom: spacing.lg,
   },
   chip: {
-    paddingVertical: 8,
-    paddingHorizontal: spacing.md,
+    minHeight: TOUCH_TARGET,
+    paddingHorizontal: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderRadius: radii.pill,
-    backgroundColor: colors.neutralSoft,
-  },
-  chipActive: {
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.chipBg,
   },
   chipText: {
-    ...typography.caption,
-    fontWeight: '600',
-    color: colors.neutral,
-  },
-  chipTextActive: {
-    color: colors.primary,
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.chipText,
   },
   photoCard: {
     marginTop: spacing.lg,
@@ -279,7 +281,9 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     borderRadius: radii.md,
-    backgroundColor: colors.neutralSoft,
+    backgroundColor: colors.chipBg,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
   },
   photoRemove: {
     position: 'absolute',
