@@ -1,5 +1,5 @@
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { SQLiteDatabase } from 'expo-sqlite';
 
@@ -11,20 +11,43 @@ import {
 } from '../db/repository/reminders';
 import type { ServiceScheduleItem } from '../db/types';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+
+// Since SDK 53, merely importing expo-notifications in Expo Go on Android logs
+// an error about removed remote-notification support. This app only uses local
+// notifications, so skip the module entirely there (use a development build to
+// get reminders on Android) and load it lazily everywhere else.
+const isAndroidExpoGo =
+  Platform.OS === 'android' &&
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+
+let notificationsPromise: Promise<NotificationsModule | null> | null = null;
+
+function getNotificationsAsync(): Promise<NotificationsModule | null> {
+  if (isAndroidExpoGo) return Promise.resolve(null);
+  if (!notificationsPromise) {
+    notificationsPromise = import('expo-notifications').then((Notifications) => {
+      Notifications.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: false,
+          shouldSetBadge: false,
+        }),
+      });
+      return Notifications;
+    });
+  }
+  return notificationsPromise;
+}
 
 const REMINDER_HOUR = 9;
 
 export async function ensureNotificationPermissionsAsync(): Promise<boolean> {
   try {
     if (!Device.isDevice) return false;
+    const Notifications = await getNotificationsAsync();
+    if (!Notifications) return false;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
@@ -52,6 +75,9 @@ export async function scheduleReminderNotificationAsync(content: {
     const fireDate = new Date(`${content.dueDateIso}T${String(REMINDER_HOUR).padStart(2, '0')}:00:00`);
     if (Number.isNaN(fireDate.getTime()) || fireDate.getTime() <= Date.now()) return null;
 
+    const Notifications = await getNotificationsAsync();
+    if (!Notifications) return null;
+
     return await Notifications.scheduleNotificationAsync({
       content: { title: content.title, body: content.body },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: fireDate },
@@ -66,6 +92,8 @@ export async function cancelReminderNotificationAsync(
 ): Promise<void> {
   if (!notificationId) return;
   try {
+    const Notifications = await getNotificationsAsync();
+    if (!Notifications) return;
     await Notifications.cancelScheduledNotificationAsync(notificationId);
   } catch {
     // Already fired or cancelled — nothing to do.
