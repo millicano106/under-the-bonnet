@@ -1,48 +1,73 @@
-import type { ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
+import { useMemo, type ReactNode } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 
+import { useAccent } from '../lib/accent';
 import { useSettings } from '../lib/settings';
 import { colors } from '../theme';
 
-// Decorative line-art backdrop: a soft blue wash, a faint car silhouette and a
-// large wheel. Purely visual; sits behind screen content and ignores touches.
-function BackgroundArt() {
+const GRID = 18;
+const FLAG_COLS = 10;
+const FLAG_ROWS = 9;
+
+// Decorative only: dot grid base layer, plus an optional chequered flag fading
+// in from the top-right corner. Sits behind content; text never sits on it.
+function BackgroundArt({ flag, color }: { flag: boolean; color: string }) {
+  const { width } = useWindowDimensions();
+
+  const squares = useMemo(() => {
+    const result: { key: string; x: number; y: number; opacity: number }[] = [];
+    const x0 = width - GRID * FLAG_COLS;
+    for (let i = 0; i < FLAG_COLS; i++) {
+      for (let j = 0; j < FLAG_ROWS; j++) {
+        if ((i + j) % 2) continue;
+        const d = Math.sqrt((FLAG_COLS - 1 - i) ** 2 * 0.8 + j ** 2);
+        const opacity = 0.2 - d * 0.025;
+        if (opacity >= 0.02) result.push({ key: `${i}-${j}`, x: x0 + i * GRID, y: j * GRID, opacity });
+      }
+    }
+    return result;
+  }, [width]);
+
   return (
-    <Svg style={StyleSheet.absoluteFill} pointerEvents="none" viewBox="0 0 400 800" preserveAspectRatio="xMidYMax slice">
+    <Svg
+      style={StyleSheet.absoluteFill}
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <Defs>
-        <LinearGradient id="wash" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#DCE8FD" stopOpacity="1" />
-          <Stop offset="0.45" stopColor="#F6F6F7" stopOpacity="1" />
-          <Stop offset="1" stopColor="#EEF2FB" stopOpacity="1" />
-        </LinearGradient>
+        {/* Offset so the grid lines up with the flag squares at the right edge. */}
+        <Pattern id="dots" x={width % GRID} y={0} width={GRID} height={GRID} patternUnits="userSpaceOnUse">
+          <Circle cx={1} cy={1} r={1} fill={colors.textPrimary} fillOpacity={0.1} />
+        </Pattern>
       </Defs>
-      <Rect x="0" y="0" width="400" height="800" fill="url(#wash)" />
-
-      <Circle cx="360" cy="690" r="150" fill="none" stroke="#2F6FED" strokeOpacity="0.07" strokeWidth="26" />
-      <Circle cx="360" cy="690" r="95" fill="none" stroke="#2F6FED" strokeOpacity="0.07" strokeWidth="3" />
-      <Circle cx="360" cy="690" r="22" fill="#2F6FED" fillOpacity="0.07" />
-
-      <Path
-        transform="translate(20 610) scale(0.85)"
-        d="M20 110 L20 90 Q20 80 40 76 L90 68 L130 38 Q140 30 160 30 L250 30 Q268 30 280 40 L315 68 L360 74 Q380 78 380 95 L380 110 Z M135 42 L160 68 L200 68 L200 34 M215 34 L215 68 L290 68 L262 42"
-        fill="none"
-        stroke="#2F6FED"
-        strokeOpacity="0.14"
-        strokeWidth="3"
-        strokeLinejoin="round"
-      />
-      <Circle cx="105" cy="705" r="21" fill="#F6F6F7" stroke="#2F6FED" strokeOpacity="0.14" strokeWidth="3" />
-      <Circle cx="275" cy="705" r="21" fill="#F6F6F7" stroke="#2F6FED" strokeOpacity="0.14" strokeWidth="3" />
+      <Rect width="100%" height="100%" fill="url(#dots)" />
+      {flag
+        ? squares.map((square) => (
+            <Rect
+              key={square.key}
+              x={square.x}
+              y={square.y}
+              width={GRID}
+              height={GRID}
+              fill={color}
+              fillOpacity={square.opacity}
+            />
+          ))
+        : null}
     </Svg>
   );
 }
 
 export function Screen({ children }: { children: ReactNode }) {
   const { settings } = useSettings();
+  const accent = useAccent();
   return (
     <View style={styles.container}>
-      {settings.showBackground ? <BackgroundArt /> : null}
+      {settings.showBackground ? (
+        <BackgroundArt flag={settings.showChequeredFlag} color={accent.text} />
+      ) : null}
       {children}
     </View>
   );
