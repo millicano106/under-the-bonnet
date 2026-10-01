@@ -5,7 +5,7 @@ on-device in SQLite — no server, no sync, no external APIs yet.
 
 ## Stack
 
-- **Expo SDK 54** (TypeScript template) — pinned for Expo Go compatibility
+- **Expo SDK 57** (TypeScript template)
 - **expo-router** for navigation — file-based routing, so the folder
   structure in `app/` doubles as the route map, and it comes with typed
   routes and deep linking out of the box. Chosen over hand-wired React
@@ -47,7 +47,7 @@ image), so the following still needs to happen before it can be trusted:
    - Creating/editing a schedule item with a future "Next due date" actually
      schedules a local notification (check `lib/notifications.ts` — this is
      the highest-uncertainty piece, since local notification behavior in
-     plain Expo Go on SDK 54 hasn't been confirmed on a real device yet).
+     plain Expo Go on SDK 57 hasn't been confirmed on a real device yet).
    - Deleting a schedule item cancels its notification (not just the DB row).
 
 Everything else described in this README below reflects the code as written.
