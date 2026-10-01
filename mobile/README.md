@@ -16,7 +16,9 @@ on-device in SQLite — no server, no sync, no external APIs yet.
 - **expo-image-picker** + **expo-file-system** for invoice photos (copied into
   the app's document directory)
 - **expo-print** + **expo-sharing** for PDF car reports
-- **react-native-svg** for the decorative screen background
+- **react-native-svg** for the decorative screen background (dot grid + chequered flag)
+- **@expo-google-fonts/ibm-plex-sans / ibm-plex-mono** + **expo-font** + **expo-splash-screen**
+  for the typeface (splash is held until fonts load)
 - **@expo/vector-icons** (Feather set) for icons throughout the UI
 
 ## Running
@@ -81,10 +83,13 @@ db/
 Shared, non-DB code:
 
 ```
-theme.ts              Colors, spacing, radii, typography, shadow tokens
+theme.ts              "Workshop Paper" tokens: colors, spacing, radii, fonts,
+                       typography, and the PAINTS accent list
 components/           Shared UI: Button, Card, TextField, ListRow,
                        SectionHeader, EmptyState, Badge
 lib/
+  accent.ts            useAccent(): current accent paint (fill/on/text/soft + danger)
+  settings.tsx         SettingsProvider / useSettings()
   formValues.ts        Small parse-or-null helpers for form fields
   notifications.ts     expo-notifications wrapper + reminder sync logic
 ```
@@ -162,7 +167,15 @@ date data anywhere in the app for those yet, so they remain unreachable
 
 - `/` — Garage: Active / Sold tabs, delete per car, add button, settings gear.
 - `/settings` — currency, name for reports, reminder on/off + time of day,
-  background artwork toggle (stored in the `settings` table).
+  accent colour (9 paints), background artwork and chequered-flag switches
+  (stored in the `settings` table).
+
+## Theming
+
+Accent colour is a user setting. Read it with `useAccent()` rather than static
+colours: `fill` behind `on` text, `text` for accent-coloured text/icons, `soft`
+for icon tiles. Never use `fill` as a text colour. The danger red switches to a
+darker red under Rosso Corsa. Every interactive control is at least 44×44.
 - `/add-car` — modal form to add a car.
 - `/car/[id]` — Car detail: header info, Share PDF Report, Mark as Sold / Reopen, delete car, and
   Financials / Components / Schedule / Log sections (in-screen tabs), each
