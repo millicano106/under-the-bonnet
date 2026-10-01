@@ -1,11 +1,15 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 
+import { DEFAULT_PAINT, PAINTS, type PaintName } from '../../theme';
+
 export interface AppSettings {
   currencySymbol: string;
   ownerName: string;
   remindersEnabled: boolean;
   reminderHour: number;
   showBackground: boolean;
+  showChequeredFlag: boolean;
+  accentPaint: PaintName;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   remindersEnabled: true,
   reminderHour: 9,
   showBackground: true,
+  showChequeredFlag: true,
+  accentPaint: DEFAULT_PAINT,
 };
 
 export async function loadSettings(db: SQLiteDatabase): Promise<AppSettings> {
@@ -33,6 +39,10 @@ export async function loadSettings(db: SQLiteDatabase): Promise<AppSettings> {
     showBackground: stored.has('showBackground')
       ? stored.get('showBackground') === '1'
       : DEFAULT_SETTINGS.showBackground,
+    showChequeredFlag: stored.has('showChequeredFlag')
+      ? stored.get('showChequeredFlag') === '1'
+      : DEFAULT_SETTINGS.showChequeredFlag,
+    accentPaint: PAINTS.find((paint) => paint.name === stored.get('accentPaint'))?.name ?? DEFAULT_PAINT,
   };
 }
 
